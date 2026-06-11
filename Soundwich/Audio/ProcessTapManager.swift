@@ -29,6 +29,27 @@ final class ProcessTapManager {
 
     private var activeTaps: [String: ActiveTap] = [:]
 
+    /// Surface the system-audio-recording permission prompt up front.
+    ///
+    /// This is the permission the Process Tap API needs — a DIFFERENT TCC bucket from
+    /// the microphone permission (AVCaptureDevice). The only reliable way to trigger it
+    /// is to actually create a tap, so we make a throwaway global tap and destroy it.
+    /// Runs off the main thread; the TCC prompt still surfaces normally.
+    static func primeAudioCapturePermission() {
+        DispatchQueue.global(qos: .utility).async {
+            let probe = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+            probe.uuid = UUID()
+            probe.isPrivate = true
+            probe.muteBehavior = CATapMuteBehavior(rawValue: 0) ?? .unmuted  // never mute real audio
+            probe.name = "Soundwich Permission Probe"
+            var tapID: AUAudioObjectID = 0
+            let status = AudioHardwareCreateProcessTap(probe, &tapID)
+            if status == noErr, tapID != 0 {
+                AudioHardwareDestroyProcessTap(tapID)
+            }
+        }
+    }
+
     @discardableResult
     func startRouting(bundleID: String, pids: [pid_t], toOutputUID outputUID: String) throws -> ActiveTap {
         log.info("startRouting: \(bundleID, privacy: .public) pids=\(pids) → \(outputUID, privacy: .public)")

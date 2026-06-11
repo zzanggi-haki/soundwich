@@ -5,6 +5,8 @@ struct MenuBarRootView: View {
     @StateObject private var deviceManager = AudioDeviceManager()
     @StateObject private var processManager = AudioProcessManager()
     @StateObject private var router = AudioRouter()
+    @StateObject private var loginItem = LoginItemManager()
+    @State private var showingSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -12,6 +14,39 @@ struct MenuBarRootView: View {
 
             Divider()
 
+            if showingSettings {
+                settingsContent
+            } else {
+                mainContent
+            }
+        }
+        .padding(16)
+        .frame(width: 400, height: 430, alignment: .topLeading)
+        .task {
+            await deviceManager.refresh()
+            processManager.start()
+            // Soundwich is a fully manual tool. We never auto-route — the user is always
+            // in control. Saved routes are remembered for convenience (checkmarked in the
+            // menu) but require an explicit selection to engage.
+        }
+        .onChange(of: processManager.processes) { _, newProcesses in
+            // Keep engaged taps in sync: tear down when the app quits, and re-create
+            // when a browser spawns a new audio helper so the tap covers it.
+            router.syncWithProcesses(newProcesses, outputs: deviceManager.outputDevices)
+            // App (re)appearing can also trigger restore of a forcibly-released route.
+            router.reconcileDevices(outputs: deviceManager.outputDevices, processes: newProcesses)
+        }
+        .onChange(of: deviceManager.outputDevices) { _, newOutputs in
+            // Device removed → release route (audio → system default). Device back →
+            // auto-restore a route that was released because it vanished.
+            router.reconcileDevices(outputs: newOutputs, processes: processManager.processes)
+        }
+    }
+
+    // MARK: - Main content
+
+    private var mainContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
             systemSection
 
             Divider()
@@ -61,27 +96,39 @@ struct MenuBarRootView: View {
 
             footer
         }
-        .padding(16)
-        .frame(width: 400, height: 430, alignment: .topLeading)
-        .task {
-            await deviceManager.refresh()
-            processManager.start()
-            // Soundwich is a fully manual tool. We never auto-route — the user is always
-            // in control. Saved routes are remembered for convenience (checkmarked in the
-            // menu) but require an explicit selection to engage.
+    }
+
+    // MARK: - Settings
+
+    private var settingsContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionLabel("Settings")
+
+            Toggle(isOn: Binding(
+                get: { loginItem.isEnabled },
+                set: { loginItem.setEnabled($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("로그인 시 시작")
+                        .font(.body)
+                    Text("맥을 켜면 Soundwich가 자동으로 실행됩니다")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+
+            if let err = loginItem.lastError {
+                Label(err, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(3)
+            }
+
+            Spacer()
         }
-        .onChange(of: processManager.processes) { _, newProcesses in
-            // Keep engaged taps in sync: tear down when the app quits, and re-create
-            // when a browser spawns a new audio helper so the tap covers it.
-            router.syncWithProcesses(newProcesses, outputs: deviceManager.outputDevices)
-            // App (re)appearing can also trigger restore of a forcibly-released route.
-            router.reconcileDevices(outputs: deviceManager.outputDevices, processes: newProcesses)
-        }
-        .onChange(of: deviceManager.outputDevices) { _, newOutputs in
-            // Device removed → release route (audio → system default). Device back →
-            // auto-restore a route that was released because it vanished.
-            router.reconcileDevices(outputs: newOutputs, processes: processManager.processes)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onAppear { loginItem.refresh() }
     }
 
     // MARK: - System section
@@ -147,17 +194,37 @@ struct MenuBarRootView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 24, height: 19)
-            Text("Soundwich")
+            Text(showingSettings ? "설정" : "Soundwich")
                 .font(.headline)
             Spacer()
-            Button {
-                processManager.refresh()
-                Task { await deviceManager.refresh() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
+
+            if showingSettings {
+                Button {
+                    showingSettings = false
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.borderless)
+                .help("뒤로")
+            } else {
+                Button {
+                    processManager.refresh()
+                    Task { await deviceManager.refresh() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .help("새로고침")
+
+                Button {
+                    loginItem.refresh()
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .buttonStyle(.borderless)
+                .help("설정")
             }
-            .buttonStyle(.borderless)
-            .help("새로고침")
 
             Button {
                 NSApp.terminate(nil)
@@ -173,7 +240,7 @@ struct MenuBarRootView: View {
         HStack {
             Text("\(router.activeRoutes.count)개 활성 · \(router.store.routes.count)개 저장됨")
             Spacer()
-            Text("v0.22")
+            Text("v0.24")
         }
         .font(.caption2)
         .foregroundStyle(.tertiary)

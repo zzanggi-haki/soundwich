@@ -16,5 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menuBarController = MenuBarController()
+        // Surface the system-audio-recording permission immediately on launch — this is
+        // the permission per-app routing needs — instead of mid-task when the user first
+        // picks an output device.
+        ProcessTapManager.primeAudioCapturePermission()
     }
 }
