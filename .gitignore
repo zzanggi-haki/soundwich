@@ -21,3 +21,7 @@ Package.resolved
 .vscode/
 .idea/
 
+
+# Distribution artifacts
+*.dmg
+build/

@@ -14,7 +14,13 @@ Per-app audio routing for macOS. Send Spotify to your Bluetooth speaker while Sl
 - Xcode 15.2+
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 
-## Build & Run
+## Install (prebuilt)
+
+Grab the latest `Soundwich.dmg` from [Releases](../../releases) and follow
+[INSTALL.md](INSTALL.md). It's an unsigned build, so macOS Gatekeeper needs a
+one-time bypass (instructions included).
+
+## Build from source
 
 ```sh
 brew install xcodegen        # one time
@@ -23,6 +29,12 @@ open Soundwich.xcodeproj
 ```
 
 In Xcode, select the `Soundwich` scheme and hit ⌘R. A 🥪-ish icon will appear in the menu bar.
+
+To produce a distributable universal `.dmg`:
+
+```sh
+./scripts/build_dmg.sh       # → Soundwich.dmg (arm64 + x86_64, ad-hoc signed)
+```
 
 ## Project Layout
 
