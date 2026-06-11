@@ -240,7 +240,7 @@ struct MenuBarRootView: View {
         HStack {
             Text("\(router.activeRoutes.count)개 활성 · \(router.store.routes.count)개 저장됨")
             Spacer()
-            Text("v0.24")
+            Text("v0.25")
         }
         .font(.caption2)
         .foregroundStyle(.tertiary)

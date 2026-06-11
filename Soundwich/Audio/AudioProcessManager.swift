@@ -115,10 +115,13 @@ final class AudioProcessManager: ObservableObject {
         let ids = fetchProcessObjectIDs()
         let selfPID = ProcessInfo.processInfo.processIdentifier
         let workspaceApps = NSWorkspace.shared.runningApplications
+        // NSWorkspace can transiently report two entries with the same PID (during app
+        // launch/quit, or PID reuse). `Dictionary(uniqueKeysWithValues:)` TRAPS on a
+        // duplicate key — which crashed the whole app mid-use. Tolerate dupes by keeping
+        // the first occurrence.
         let appsByPID = Dictionary(
-            uniqueKeysWithValues: workspaceApps.compactMap { app -> (pid_t, NSRunningApplication)? in
-                (app.processIdentifier, app)
-            }
+            workspaceApps.map { ($0.processIdentifier, $0) },
+            uniquingKeysWith: { first, _ in first }
         )
 
         var icons = existingIcons
