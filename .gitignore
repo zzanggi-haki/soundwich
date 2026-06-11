@@ -1,0 +1,23 @@
+# XcodeGen-generated
+*.xcodeproj/
+*.xcworkspace/
+
+# Build
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
