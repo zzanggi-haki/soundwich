@@ -21,6 +21,11 @@ final class AudioRouter: ObservableObject {
     @Published private(set) var pendingRoutes: [String: String] = [:]
     @Published var lastError: String?
 
+    /// Routes we were forced to release because their output device disappeared
+    /// (e.g. AirPods removed). These — and ONLY these — are auto-restored when the
+    /// device returns. Routes the user cleared manually are never auto-restored.
+    private var forciblyReleased: Set<String> = []
+
     struct ActiveRouteInfo: Equatable {
         let bundleID: String
         let appName: String
@@ -49,6 +54,7 @@ final class AudioRouter: ObservableObject {
             return
         }
         if lastError != nil { lastError = nil }
+        forciblyReleased.remove(bundleID)  // explicit user action ends auto-restore tracking
         store.save(.init(
             bundleID: bundleID,
             appName: appName,
@@ -63,6 +69,7 @@ final class AudioRouter: ObservableObject {
     /// User clears the route — stops the tap and removes the saved preference.
     func clearRoute(bundleID: String) {
         store.remove(bundleID: bundleID)
+        forciblyReleased.remove(bundleID)  // user cleared it → never auto-restore
         pendingRoutes.removeValue(forKey: bundleID)
         if activeRoutes[bundleID] != nil {
             activeRoutes.removeValue(forKey: bundleID)
@@ -110,6 +117,50 @@ final class AudioRouter: ObservableObject {
                 )
                 startTap(bundleID: bundleID, appName: route.appName, pids: current.map(\.pid), output: output)
             }
+        }
+    }
+
+    /// React to the output device list (or process list) changing.
+    ///
+    /// - If an engaged route's target device disappeared (e.g. AirPods removed), tear
+    ///   the route down so the app's audio falls back to the system default instead of
+    ///   going silent. We remember it as "forcibly released".
+    /// - If a forcibly-released route's device has come back AND the app is running,
+    ///   automatically re-engage it — restoring the user's prior intent without a
+    ///   sudden surprise switch (it only restores what was active moments ago).
+    func reconcileDevices(outputs: [AudioDevice], processes: [AudioProcess]) {
+        let available = Set(outputs.map(\.uid))
+
+        // 1. Releases — device vanished from under an active route.
+        for (bundleID, route) in activeRoutes where !available.contains(route.outputDeviceUID) {
+            log.info("Output device gone for \(bundleID, privacy: .public) — releasing route, audio returns to system default")
+            activeRoutes.removeValue(forKey: bundleID)
+            pendingRoutes.removeValue(forKey: bundleID)
+            forciblyReleased.insert(bundleID)
+            let manager = tapManager
+            tapQueue.async { manager.stopRouting(bundleID: bundleID) }
+        }
+
+        // 2. Restores — a forcibly-released route's device is back and the app is alive.
+        guard !forciblyReleased.isEmpty else { return }
+        let pidsByBundleID = Dictionary(grouping: processes.filter { $0.bundleID != nil },
+                                        by: { $0.bundleID! })
+        for bundleID in forciblyReleased {
+            guard let saved = store.route(for: bundleID) else {
+                forciblyReleased.remove(bundleID); continue          // no longer saved
+            }
+            guard available.contains(saved.outputDeviceUID) else { continue }  // device not back yet
+            guard activeRoutes[bundleID] == nil else {
+                forciblyReleased.remove(bundleID); continue          // already engaged somehow
+            }
+            guard let procs = pidsByBundleID[bundleID], !procs.isEmpty,
+                  let output = outputs.first(where: { $0.uid == saved.outputDeviceUID }) else {
+                continue                                              // app not running yet — wait
+            }
+            log.info("Device returned for \(bundleID, privacy: .public) — auto-restoring route")
+            forciblyReleased.remove(bundleID)
+            pendingRoutes[bundleID] = output.uid
+            startTap(bundleID: bundleID, appName: saved.appName, pids: procs.map(\.pid), output: output)
         }
     }
 

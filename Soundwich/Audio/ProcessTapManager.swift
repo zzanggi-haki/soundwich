@@ -106,6 +106,7 @@ final class ProcessTapManager {
         let logCopy = log
         let labelCopy = bundleID
         let counter = IOProcCounter()
+        let ramp = FadeRamp()  // short fade-in to suppress the connection "pop"
         status = AudioDeviceCreateIOProcIDWithBlock(
             &ioProcID,
             aggregateID,
@@ -117,17 +118,38 @@ final class ProcessTapManager {
             let outputList = UnsafeMutableAudioBufferListPointer(outputData)
             let count = min(inputList.count, outputList.count)
             var totalBytes: UInt32 = 0
+
+            // Fade-in: ramp gain 0→1 over the first ~80ms of routing. Tap streams are
+            // 32-bit float, so we scale samples on the first buffers, then fall back to
+            // a plain memcpy once the ramp completes (zero per-sample cost thereafter).
+            let rampBase = ramp.position
+            var framesAdvanced = 0
+
             for i in 0..<count {
                 let inBuffer = inputList[i]
                 var outBuffer = outputList[i]
                 let bytes = min(inBuffer.mDataByteSize, outBuffer.mDataByteSize)
-                if let src = inBuffer.mData, let dst = outBuffer.mData, bytes > 0 {
-                    memcpy(dst, src, Int(bytes))
-                    totalBytes &+= bytes
-                } else if let dst = outBuffer.mData {
-                    memset(dst, 0, Int(outBuffer.mDataByteSize))
+                guard bytes > 0, let src = inBuffer.mData, let dst = outBuffer.mData else {
+                    if let dst = outBuffer.mData { memset(dst, 0, Int(outBuffer.mDataByteSize)) }
+                    continue
                 }
+                let sampleCount = Int(bytes) / MemoryLayout<Float>.size
+                if rampBase >= ramp.length {
+                    memcpy(dst, src, Int(bytes))            // ramp done — fast path
+                } else {
+                    let s = src.assumingMemoryBound(to: Float.self)
+                    let d = dst.assumingMemoryBound(to: Float.self)
+                    let len = Float(ramp.length)
+                    for j in 0..<sampleCount {
+                        let g = Float(min(ramp.length, rampBase + j)) / len
+                        d[j] = s[j] * g
+                    }
+                }
+                if i == 0 { framesAdvanced = sampleCount }
+                totalBytes &+= bytes
             }
+            ramp.position = min(ramp.length, rampBase + framesAdvanced)
+
             // Log once per second to confirm audio is actually flowing through the tap.
             if counter.tick(bytes: totalBytes) {
                 logCopy.info("IOProc[\(labelCopy, privacy: .public)] active: \(counter.callsPerSecond) calls/s, \(counter.bytesPerSecond) bytes/s")
@@ -264,6 +286,14 @@ final class ProcessTapManager {
             throw RoutingError.propertyReadFailed(status)
         }
         return cfString as String
+    }
+
+    /// Fade-in ramp state for the IOProc. Only the realtime audio thread touches
+    /// `position`, so no locking is needed. `length` is in samples — ~80ms at 48 kHz
+    /// stereo (interleaved) is roughly 48000 * 0.08 * 2 ≈ 7680.
+    final class FadeRamp: @unchecked Sendable {
+        let length: Int = 7680
+        var position: Int = 0
     }
 
     /// Tiny thread-safe counter that aggregates IOProc invocations and reports once per second.

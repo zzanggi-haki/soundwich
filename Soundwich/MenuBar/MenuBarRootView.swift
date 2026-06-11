@@ -74,6 +74,13 @@ struct MenuBarRootView: View {
             // Keep engaged taps in sync: tear down when the app quits, and re-create
             // when a browser spawns a new audio helper so the tap covers it.
             router.syncWithProcesses(newProcesses, outputs: deviceManager.outputDevices)
+            // App (re)appearing can also trigger restore of a forcibly-released route.
+            router.reconcileDevices(outputs: deviceManager.outputDevices, processes: newProcesses)
+        }
+        .onChange(of: deviceManager.outputDevices) { _, newOutputs in
+            // Device removed → release route (audio → system default). Device back →
+            // auto-restore a route that was released because it vanished.
+            router.reconcileDevices(outputs: newOutputs, processes: processManager.processes)
         }
     }
 
@@ -166,7 +173,7 @@ struct MenuBarRootView: View {
         HStack {
             Text("\(router.activeRoutes.count)개 활성 · \(router.store.routes.count)개 저장됨")
             Spacer()
-            Text("v0.19")
+            Text("v0.22")
         }
         .font(.caption2)
         .foregroundStyle(.tertiary)
