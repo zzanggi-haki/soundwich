@@ -75,6 +75,12 @@ open Soundwich.xcodeproj      # 이후 ⌘R
 ./scripts/build_dmg.sh       # → Soundwich.dmg (arm64 + x86_64)
 ```
 
+릴리스 (DMG 빌드 → GitHub 릴리스 생성 → [Snackbar](https://github.com/zzanggi-haki/snackbar) 사이트 갱신 신호):
+
+```sh
+./scripts/release.sh v1.2.3 --notes-file notes.md
+```
+
 ## 동작 원리
 
 대상 앱에 **Process Tap**을 걸고, 그 탭을 선택한 출력 장치로 향하는 비공개

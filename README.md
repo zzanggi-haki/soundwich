@@ -77,6 +77,13 @@ To produce a distributable universal `.dmg`:
 ./scripts/build_dmg.sh       # → Soundwich.dmg (arm64 + x86_64)
 ```
 
+To cut a release (build the DMG, create the GitHub release, and tell the
+[Snackbar](https://github.com/zzanggi-haki/snackbar) site to refresh):
+
+```sh
+./scripts/release.sh v1.2.3 --notes-file notes.md
+```
+
 ## How it works
 
 Soundwich creates a **Process Tap** on the target app, wraps it in a private
