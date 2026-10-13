@@ -27,13 +27,26 @@
 
 ## 설치
 
+**빠른 설치 (추천)** — **터미널**을 열고 아래 한 줄을 붙여넣은 뒤 Return:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/zzanggi-haki/soundwich/main/scripts/install.sh | bash
+```
+
+최신 버전을 받아 **응용 프로그램**에 넣고 바로 실행해요. Gatekeeper 경고도 뜨지
+않습니다. 처음 사용할 때 **시스템 오디오 녹음** 권한을 허용하세요. 앱 소리를
+캡처해서 다른 기기로 보내기 위한 권한입니다.
+
+<details>
+<summary>수동 설치 (.dmg)</summary>
+
 1. [Releases](https://github.com/zzanggi-haki/soundwich/releases)에서 최신
    **`Soundwich.dmg`**를 받으세요.
 2. 열어서 **Soundwich**를 **응용 프로그램**으로 드래그.
 3. 무료 미서명 빌드라 macOS Gatekeeper를 처음 한 번 우회해야 해요 —
-   **[INSTALL.md](INSTALL.md)** 참고 (터미널 한 줄이면 끝).
-4. 처음 사용할 때 **시스템 오디오 녹음** 권한을 허용하세요. 앱 소리를 캡처해서
-   다른 기기로 보내기 위한 권한입니다.
+   **[INSTALL.md](INSTALL.md)** 참고.
+
+</details>
 
 **요구 사항:** macOS 14.2 이상 · Apple Silicon 또는 Intel (universal 빌드).
 

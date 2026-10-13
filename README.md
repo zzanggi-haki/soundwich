@@ -28,13 +28,26 @@ drivers to install.
 
 ## Install
 
+**Quick install (recommended)** — open **Terminal**, paste this line, press Return:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/zzanggi-haki/soundwich/main/scripts/install.sh | bash
+```
+
+It downloads the latest release, puts Soundwich in **Applications**, and launches
+it — no Gatekeeper warning. On first use, allow the **system audio recording**
+permission. That's how Soundwich captures an app's audio to re-route it.
+
+<details>
+<summary>Manual install (.dmg)</summary>
+
 1. Download the latest **`Soundwich.dmg`** from
    [Releases](https://github.com/zzanggi-haki/soundwich/releases).
 2. Open it and drag **Soundwich** into **Applications**.
 3. It's a free, unsigned build, so macOS Gatekeeper needs a one-time bypass —
-   see **[INSTALL.md](INSTALL.md)** (the quick way is one Terminal command).
-4. On first use, allow the **system audio recording** permission. That's how
-   Soundwich captures an app's audio to re-route it.
+   see **[INSTALL.md](INSTALL.md)**.
+
+</details>
 
 **Requirements:** macOS 14.2 or later · Apple Silicon or Intel (universal build).
 

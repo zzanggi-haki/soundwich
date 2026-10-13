@@ -1,21 +1,35 @@
 # Installing Soundwich
 
-Soundwich is distributed as an unsigned `.dmg` (no paid Apple Developer
-certificate). macOS Gatekeeper will block it on first launch — this is expected
-for free, unsigned apps. Follow the steps below once; afterwards it launches
-normally.
+## Quick install (recommended)
 
-## Install
+Open **Terminal** (⌘Space → "Terminal"), paste this line, and press Return:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/zzanggi-haki/soundwich/main/scripts/install.sh | bash
+```
+
+This downloads the latest release, copies Soundwich into **Applications**, and
+launches it. Because the download doesn't go through a browser, macOS Gatekeeper
+doesn't block it — skip straight to [Grant audio permission](#grant-audio-permission).
+
+## Manual install (.dmg)
+
+Soundwich is distributed as an unsigned `.dmg` (no paid Apple Developer
+certificate). If you download it in a browser or receive it via AirDrop or a
+messenger, Gatekeeper will block it on first launch — this is expected for free,
+unsigned apps. Follow the steps below once; afterwards it launches normally.
+
+### Copy the app
 
 1. Open **Soundwich.dmg** and drag **Soundwich** into the **Applications** folder.
 2. Eject the disk image.
 
-## First launch (bypass Gatekeeper)
+### First launch (bypass Gatekeeper)
 
 Because the app isn't notarized, macOS won't open it by double-click the first
 time. Pick **one** of the two methods:
 
-### Method A — Terminal (fastest)
+#### Method A — Terminal (fastest)
 
 Open Terminal and run:
 
@@ -25,7 +39,7 @@ xattr -dr com.apple.quarantine /Applications/Soundwich.app
 
 Then open Soundwich normally from Applications.
 
-### Method B — System Settings
+#### Method B — System Settings
 
 1. Double-click Soundwich. macOS shows a warning and refuses to open it.
 2. Open **System Settings → Privacy & Security**.
